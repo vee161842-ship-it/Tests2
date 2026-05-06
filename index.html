@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>ระบบจองที่นั่งห้องเรียน</title>
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background: #1a1a1a; color: white; text-align: center; }
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; max-width: 800px; margin: 20px auto; }
+        .desk { border: 2px solid #444; padding: 5px; display: flex; background: #333; }
+        .seat { width: 40px; height: 40px; margin: 2px; background: #808080; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+        .seat.occupied { background: #4CAF50; cursor: not-allowed; }
+        .seat.mine { background: #2196F3; }
+        .controls { margin-bottom: 20px; }
+        input { padding: 8px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>ระบบจองที่นั่งออนไลน์</h1>
+    <div class="controls">
+        กรอกเลขที่ของคุณ (1-40): <input type="number" id="studentNo" min="1" max="40">
+    </div>
+    <div id="status">กำลังโหลดข้อมูล...</div>
+    <div class="grid" id="classroom"></div>
+
+    <script>
+        // *** https://script.google.com/macros/s/AKfycbzVdR3p3tJ_ZrUrb7eJfn5rpn-qPsmHCQGVvZ0tnYQ4ck0nLhSNB-_YY2IvOH-SShKwUA/exec ***
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzVdR3p3tJ_ZrUrb7eJfn5rpn-qPsmHCQGVvZ0tnYQ4ck0nLhSNB-_YY2IvOH-SShKwUA/exec'; 
+        
+        const students = ["ด.ช.กรวัฒน์", "ด.ช.ชนพัฒน์", "ด.ช.ณัฐกฤต", "ด.ช.ณัฐนันท์", "ด.ช.ณัฐสิทธิ์", "ด.ช.ดนย์ศิลา", "ด.ช.ต้นแรม", "ด.ช.เตชิษฐ์", "ด.ช.ธนภูมิ", "ด.ช.ธีรดนย์", "ด.ช.นพดล", "ด.ช.ปัณณทัต", "ด.ช.ปัณณวิชญ์", "ด.ช.พัชรกฤษฎิ์", "ด.ช.พัทรศักดิ์", "ด.ช.พิรุฬห์กร", "ด.ช.พีระพล", "ด.ช.ภูรพัฒน์", "ด.ช.สุรเชษฐ์", "ด.ช.เอกวิศว์", "ด.ญ.กรมณี", "ด.ญ.ครองขวัญ", "ด.ญ.จิระประไพ", "ด.ญ.ญาดา", "ด.ญ.ณพิชญา", "ด.ญ.ธนพร", "ด.ญ.ธนัญญา", "ด.ญ.ธัญญาฑิพย์", "ด.ญ.ธัญลักษณ์", "ด.ญ.ธันยภรณ์", "ด.ญ.ธีรนาฏ", "ด.ญ.นพกาญจน์", "ด.ญ.นิชาภัทร", "ด.ญ.ปัญญวีย์", "ด.ญ.พาขวัญ", "ด.ญ.ภคพร", "ด.ญ.วิชญา", "ด.ญ.วิภาดา", "ด.ญ.วิลาสินี", "ด.ญ.ศิรินภา"];
+
+        let bookings = {};
+
+        async function loadData() {
+            try {
+                const response = await fetch(SCRIPT_URL);
+                bookings = await response.json();
+                renderGrid();
+                document.getElementById('status').innerText = "อัปเดตล่าสุด: " + new Date().toLocaleTimeString();
+            } catch (e) { console.error(e); }
+        }
+
+        function renderGrid() {
+            const container = document.getElementById('classroom');
+            container.innerHTML = '';
+            for (let r=1; r<=4; r++) {
+                for (let c=1; c<=5; c++) {
+                    const desk = document.createElement('div');
+                    desk.className = 'desk';
+                    ['L', 'R'].forEach(side => {
+                        const id = `R${r}C${c}${side}`;
+                        const seat = document.createElement('div');
+                        const isOccupied = bookings[id];
+                        seat.className = `seat ${isOccupied ? 'occupied' : ''}`;
+                        seat.innerText = isOccupied || '';
+                        seat.onclick = () => bookSeat(id);
+                        desk.appendChild(seat);
+                    });
+                    container.appendChild(desk);
+                }
+            }
+        }
+
+        async function bookSeat(seatId) {
+            const no = document.getElementById('studentNo').value;
+            if (!no || no < 1 || no > 40) return alert("กรุณาใส่เลขที่ให้ถูกต้อง");
+            if (bookings[seatId]) return;
+
+            if (confirm(`ยืนยันการจองที่นั่งนี้สำหรับเลขที่ ${no}?`)) {
+                document.getElementById('status').innerText = "กำลังบันทึก...";
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: "book", studentNo: no, seatId: seatId })
+                });
+                loadData();
+            }
+        }
+
+        setInterval(loadData, 5000); // อัปเดตข้อมูลทุก 5 วินาที
+        loadData();
+    </script>
+</body>
+</html>
